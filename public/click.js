@@ -10,6 +10,11 @@ function ButtonCtrl($scope,buttonApi){
   $scope.isLoading = isLoading;
   $scope.refreshButtons = refreshButtons;
   $scope.buttonClick = buttonClick;
+  $scope.totalCost = totalCost;
+  $scope.changeOne = changeOne;
+  $scope.total = 0;
+  $scope.truncate = truncate;
+  $scope.removeItem = removeItem;
 
   var loading = false;
 
@@ -23,49 +28,99 @@ function ButtonCtrl($scope,buttonApi){
     }, 0);
   }
 
+  function truncate() {
+    if (confirm("Are you sure you want to purge the table?")) {
+      buttonApi.truncate().then(function() {
+        $scope.current_list = [];
+      });
+    }
+  }
+
+  function changeOne(item, quantity) {
+    if (quantity == 0 || (item.quantity <= 0 && quantity < 0)) {
+      console.log("You can't have a negative number of items, or remove zero items.");
+    } else {
+      buttonApi.changeOne(item.invID, quantity).success(function(res) {
+        item.quantity = parseInt(item.quantity) + parseInt(res.quantity);
+      });
+    }
+  }
+
   function refreshButtons(){
     loading=true;
     $scope.errorMessage='';
     buttonApi.getButtons()
     .success(function(data){
-      $scope.buttons=data;
-      loading=false;
+      $scope.buttons = data;
+      buttonApi.getCurrent().success(function(list) {
+        $scope.current_list = list;
+        $scope.total = $scope.totalCost().toFixed(2);
+        loading = false;
+      });
     })
     .error(function () {
-      $scope.errorMessage="Unable to load Buttons:  Database request failed";
+      $scope.errorMessage="Unable to load Buttons: Database request failed";
+      alert($scope.errorMessage);
       loading=false;
     });
   }
+
+  function removeItem(item) {
+    console.log(item);
+    buttonApi.removeItem(item.invID).then(function(res) {
+      if (res.err) {
+        console.log(res.err);
+      } else {
+        for (var i = 0; i < $scope.current_list.length; i++) {
+          if ($scope.current_list[i].invID == item.invID) {
+            $scope.current_list.splice(i, 1);
+          }
+        }
+      }
+    });
+  }
+
   function buttonClick($event, buttonID, invID){
-    console.log("Inventory ID for button: " + invID);
     $scope.errorMessage='';
     buttonApi.clickButton($event.target.id)
     .success(function(){
       buttonApi.getCurrent().success(function(data) {
         $scope.current_list = data;
-        console.log("Got a list of the current transaction:");
-        console.log(data);
+        $scope.total = $scope.totalCost().toFixed(2);
       });
     })
-    .error(function(){$scope.errorMessage="Unable to complete click";});
+    .error(function() {
+      $scope.errorMessage="Unable to complete click";
+    });
   }
-  refreshButtons();  //make sure the buttons are loaded
+  refreshButtons();
 
 }
 
 function buttonApi($http,apiUrl){
   return{
-    getButtons: function(){
+    getButtons: function() {
       var url = apiUrl + '/buttons';
       return $http.get(url);
     },
-    clickButton: function(id){
-      var url = apiUrl+'/click?id='+id;
-      //      console.log("Attempting with "+url);
-      return $http.get(url); // Easy enough to do this way
+    clickButton: function(id) {
+      var url = apiUrl+'/click?id=' + id;
+      return $http.get(url);
     },
     getCurrent: function() {
       var url = apiUrl + '/current';
+      return $http.get(url);
+    },
+    truncate: function() {
+      return $http.get(apiUrl+'/truncate');
+    },
+    changeOne: function(id, quantity) {
+      var url = apiUrl + '/changeOne/'+id+'/'+quantity;
+      console.log(url);
+      return $http.get(url);
+    },
+    removeItem: function(id) {
+      var url = apiUrl + '/removeItem/'+id;
       return $http.get(url);
     }
   };
