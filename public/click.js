@@ -42,6 +42,10 @@ function ButtonCtrl($scope,buttonApi){
     } else {
       buttonApi.changeOne(item.invID, quantity).success(function(res) {
         item.quantity = parseInt(item.quantity) + parseInt(res.quantity);
+        $scope.total = totalCost();
+        if (item.quantity == 0) {
+          removeItem(item);
+        }
       });
     }
   }
@@ -54,7 +58,7 @@ function ButtonCtrl($scope,buttonApi){
       $scope.buttons = data;
       buttonApi.getCurrent().success(function(list) {
         $scope.current_list = list;
-        $scope.total = $scope.totalCost().toFixed(2);
+        $scope.total = $scope.totalCost();
         loading = false;
       });
     })
@@ -74,6 +78,7 @@ function ButtonCtrl($scope,buttonApi){
         for (var i = 0; i < $scope.current_list.length; i++) {
           if ($scope.current_list[i].invID == item.invID) {
             $scope.current_list.splice(i, 1);
+            $scope.total = totalCost();
           }
         }
       }
@@ -86,7 +91,7 @@ function ButtonCtrl($scope,buttonApi){
     .success(function(){
       buttonApi.getCurrent().success(function(data) {
         $scope.current_list = data;
-        $scope.total = $scope.totalCost().toFixed(2);
+        $scope.total = $scope.totalCost();
       });
     })
     .error(function() {
